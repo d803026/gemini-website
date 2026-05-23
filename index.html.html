@@ -1,0 +1,918 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CHRONOS & CO. | 探尋時間的形上學維度</title>
+    <!-- Tailwind CSS (v4 Play CDN) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- GSAP & ScrollTrigger -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+    <!-- Three.js (For 3D mechanical stellar engine) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- Iconify-Icon -->
+    <script src="https://code.iconify.design/iconify-icon/2.1.0/iconify-icon.min.js"></script>
+    
+    <!-- Google Fonts: Playfair Display & Plus Jakarta Sans -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Plus Jakarta Sans', 'sans-serif'],
+                        serif: ['Playfair Display', 'serif'],
+                    },
+                    colors: {
+                        chrono: {
+                            black: '#080808',
+                            dark: '#111110',
+                            gold: '#D4AF37',
+                            sand: '#C5A880',
+                            platinum: '#E5E5E0',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #080808;
+            color: #E5E5E0;
+            overflow-x: hidden;
+        }
+
+        /* 全域高品質噪點紋理 (Global Grain) */
+        .grain-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            content: "";
+            opacity: 0.035;
+            pointer-events: none;
+            z-index: 9999;
+            background: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+        }
+
+        /* 自訂混合模式滑鼠游標 */
+        .custom-cursor {
+            width: 8px;
+            height: 8px;
+            background-color: #E5E5E0;
+            border-radius: 50%;
+            position: fixed;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            z-index: 10000;
+            transition: width 0.2s, height 0.2s;
+        }
+
+        .custom-cursor-follower {
+            width: 40px;
+            height: 40px;
+            border: 1px solid rgba(197, 168, 128, 0.4);
+            border-radius: 50%;
+            position: fixed;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            z-index: 9998;
+            mix-blend-mode: difference;
+            transition: transform 0.1s ease-out;
+        }
+
+        /* 高奢建築格線系統 (Gridlines System) */
+        .grid-line {
+            position: fixed;
+            top: 0;
+            bottom: 0;
+            width: 1px;
+            background: linear-gradient(to bottom, rgba(255,255,255,0) 0%, rgba(255,255,255,0.03) 50%, rgba(255,255,255,0) 100%);
+            z-index: 2;
+            pointer-events: none;
+        }
+
+        /* 磨砂玻璃 / 毛玻璃 (Glassmorphism) */
+        .glass-panel {
+            background: rgba(12, 12, 12, 0.65);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        /* 隱藏滾動條但保留功能 */
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #080808;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #252522;
+            border-radius: 2px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #C5A880;
+        }
+    </style>
+</head>
+<body class="antialiased selection:bg-stone-800 selection:text-amber-200">
+
+    <!-- 全域雜訊與客製游標 -->
+    <div class="grain-overlay"></div>
+    <div id="cursor" class="custom-cursor hidden md:block"></div>
+    <div id="cursor-follower" class="custom-cursor-follower hidden md:block"></div>
+
+    <!-- 空間網格參考線 -->
+    <div class="grid-line" style="left: 10%;"></div>
+    <div class="grid-line" style="left: 30%;"></div>
+    <div class="grid-line" style="left: 50%;"></div>
+    <div class="grid-line" style="left: 70%;"></div>
+    <div class="grid-line" style="left: 90%;"></div>
+
+    <!-- 高級毛玻璃導覽列 -->
+    <header class="fixed top-0 left-0 w-full z-50 glass-panel border-b border-white/5 px-6 lg:px-16 py-5 flex justify-between items-center">
+        <div class="flex items-center gap-3">
+            <span class="font-serif text-xl tracking-[0.25em] font-semibold text-chrono-platinum">CHRONOS</span>
+            <span class="text-[9px] px-2 py-0.5 rounded-full border border-chrono-sand/30 font-mono tracking-widest uppercase text-chrono-sand bg-chrono-sand/10">CO.</span>
+        </div>
+        
+        <!-- 導覽連結 -->
+        <nav class="hidden lg:flex items-center gap-10 text-xs tracking-[0.2em] uppercase text-stone-400">
+            <a href="#philosophy" class="hover:text-chrono-sand transition-colors duration-300">形上學哲學</a>
+            <a href="#collection" class="hover:text-chrono-sand transition-colors duration-300">年度工藝定番</a>
+            <a href="#configurator" class="hover:text-chrono-sand transition-colors duration-300">時光熔爐客製</a>
+            <a href="#specifications" class="hover:text-chrono-sand transition-colors duration-300">極細微機械機制</a>
+        </nav>
+
+        <div class="flex items-center gap-4">
+            <a href="#configurator" class="magnetic-button relative group inline-flex items-center gap-2 overflow-hidden rounded-full bg-chrono-sand px-6 py-2.5 text-xs font-semibold uppercase tracking-widest text-chrono-black transition-all duration-300 hover:bg-chrono-platinum">
+                <span>建立時間合約</span>
+                <iconify-icon icon="solar:arrow-right-up-linear" class="text-sm transition-transform duration-300 group-hover:translate-x-1 group-hover:-translate-y-1"></iconify-icon>
+            </a>
+        </div>
+    </header>
+
+    <!-- 電影級主視覺區 (Hero Section) -->
+    <section class="relative min-h-screen flex items-center justify-center pt-24 overflow-hidden z-10" id="hero">
+        <!-- 3D WebGL 機械星軌星空背景 -->
+        <div id="canvas-container" class="absolute inset-0 z-0 opacity-80 pointer-events-auto"></div>
+        
+        <div class="container mx-auto px-6 lg:px-16 relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-12 items-center w-full min-h-[85vh]">
+            <!-- 左側極致文案 -->
+            <div class="lg:col-span-7 space-y-8 text-left pointer-events-none">
+                <div class="inline-flex items-center gap-3 px-4 py-1.5 rounded-full border border-chrono-sand/20 bg-chrono-sand/5 backdrop-blur-md text-[11px] font-mono tracking-widest uppercase text-chrono-sand">
+                    <span class="relative flex h-2 w-2">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-chrono-sand opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-2 w-2 bg-chrono-sand"></span>
+                    </span>
+                    CALIBER C-99 全球限量 12 枚
+                </div>
+                
+                <h1 class="text-4xl md:text-6xl xl:text-8xl font-serif font-light tracking-tight leading-[1.05] text-chrono-platinum">
+                    探尋物質與<br>
+                    <span class="italic text-chrono-sand">形上學時間</span> 的共振
+                </h1>
+                
+                <p class="text-sm md:text-base text-stone-400 font-light max-w-xl leading-relaxed">
+                    CHRONOS 拒絕被工業量產定義。我們以稀有天文隕鐵、鉑金與航太合金，打造高維度交互的機械微雕。每一個擺輪的擺幅，皆呼應著群星與引力波的無聲韻律。
+                </p>
+
+                <!-- 雙雙極致微交互按鈕 -->
+                <div class="pt-4 flex flex-col sm:flex-row gap-4 items-stretch sm:items-center pointer-events-auto">
+                    <a href="#configurator" class="magnetic-button group relative px-8 py-4 bg-chrono-sand text-chrono-black font-semibold text-xs tracking-[0.25em] uppercase rounded-xl transition-all duration-300 hover:scale-[1.02] hover:bg-chrono-platinum shadow-xl shadow-chrono-sand/15 flex items-center justify-center gap-3">
+                        <span>進入時光熔爐</span>
+                        <iconify-icon icon="solar:double-alt-arrow-right-linear" class="text-lg transition-transform group-hover:translate-x-1"></iconify-icon>
+                    </a>
+                    <a href="#philosophy" class="px-8 py-4 border border-white/10 rounded-xl text-center text-xs tracking-[0.25em] uppercase text-stone-300 hover:bg-white/5 hover:border-white/20 transition-all duration-300">
+                        探究時間哲學
+                    </a>
+                </div>
+            </div>
+
+            <!-- 右側裝飾性資訊 -->
+            <div class="lg:col-span-5 relative flex flex-col justify-between h-full py-10 lg:text-right text-left pointer-events-none">
+                <div class="hidden lg:block space-y-2">
+                    <span class="text-7xl font-serif font-light text-stone-800 tracking-tighter block">01 / 12</span>
+                    <span class="text-[10px] font-mono text-stone-500 tracking-[0.3em] uppercase">FIRST PIECE OF THE ERA</span>
+                </div>
+                
+                <div class="space-y-6 lg:pt-32">
+                    <div class="glass-panel p-6 rounded-2xl border border-white/5 inline-block text-left max-w-xs pointer-events-auto">
+                        <div class="flex items-center gap-3 mb-2">
+                            <iconify-icon icon="solar:compass-linear" class="text-xl text-chrono-sand"></iconify-icon>
+                            <span class="text-xs font-mono tracking-wider text-chrono-sand uppercase">天文級微機械</span>
+                        </div>
+                        <p class="text-xs text-stone-400 leading-relaxed font-light">
+                            搭載重力補償雙軸陀飛輪與立體恆定動力輸出機制，抵禦地心引力之絕對誤差率小於 0.002 秒。
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 形上學哲學 (Philosophy Section) -->
+    <section class="py-32 relative z-10 container mx-auto px-6 lg:px-16" id="philosophy">
+        <div class="text-center max-w-3xl mx-auto mb-24 space-y-4">
+            <span class="text-xs uppercase tracking-[0.4em] text-chrono-sand font-semibold block">METAPHYSICAL PHILOSOPHY</span>
+            <h2 class="text-3xl md:text-5xl font-serif text-chrono-platinum">用雙手刻畫時間的向度</h2>
+            <p class="text-stone-400 font-light text-sm md:text-base">我們將製錶提升至哲學命題：時間不是刻度，而是能量的流動。我們堅持純粹工藝，演繹這場跨越世紀的詩意儀式。</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <!-- 哲學 1 -->
+            <div class="glass-panel p-8 md:p-10 rounded-2xl border border-white/5 transition-all duration-500 group relative overflow-hidden hover:border-chrono-sand/30">
+                <div class="absolute top-0 left-0 w-1 h-full bg-chrono-sand opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <div class="w-12 h-12 rounded-xl bg-stone-900/50 flex items-center justify-center text-chrono-sand mb-8 border border-white/5 group-hover:bg-chrono-sand group-hover:text-chrono-black transition-all duration-300">
+                    <iconify-icon icon="solar:globus-linear" class="text-2xl"></iconify-icon>
+                </div>
+                <h3 class="text-xl font-medium mb-4 text-chrono-platinum font-serif">宇宙星曆自適應</h3>
+                <p class="text-stone-400 text-sm leading-relaxed font-light">
+                    錶盤星宿圖盤每 23 小時 56 分 4.1 秒旋轉一週，與地球真實恆星時完美嚙合，讓浩瀚星空精準在腕間演繹。
+                </p>
+            </div>
+            <!-- 哲學 2 -->
+            <div class="glass-panel p-8 md:p-10 rounded-2xl border border-white/5 transition-all duration-500 group relative overflow-hidden hover:border-chrono-sand/30">
+                <div class="absolute top-0 left-0 w-1 h-full bg-chrono-sand opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <div class="w-12 h-12 rounded-xl bg-stone-900/50 flex items-center justify-center text-chrono-sand mb-8 border border-white/5 group-hover:bg-chrono-sand group-hover:text-chrono-black transition-all duration-300">
+                    <iconify-icon icon="solar:hammer-linear" class="text-2xl"></iconify-icon>
+                </div>
+                <h3 class="text-xl font-medium mb-4 text-chrono-platinum font-serif">職人單一專屬鑄造</h3>
+                <p class="text-stone-400 text-sm leading-relaxed font-light">
+                    從初次裁切、微雕至最細微的倒角拋光，每枚機芯皆由一位大師手工打磨，歷時 900 小時傾注靈魂。
+                </p>
+            </div>
+            <!-- 哲學 3 -->
+            <div class="glass-panel p-8 md:p-10 rounded-2xl border border-white/5 transition-all duration-500 group relative overflow-hidden hover:border-chrono-sand/30">
+                <div class="absolute top-0 left-0 w-1 h-full bg-chrono-sand opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <div class="w-12 h-12 rounded-xl bg-stone-900/50 flex items-center justify-center text-chrono-sand mb-8 border border-white/5 group-hover:bg-chrono-sand group-hover:text-chrono-black transition-all duration-300">
+                    <iconify-icon icon="solar:key-linear" class="text-2xl"></iconify-icon>
+                </div>
+                <h3 class="text-xl font-medium mb-4 text-chrono-platinum font-serif">非對稱物理幾何美學</h3>
+                <p class="text-stone-400 text-sm leading-relaxed font-light">
+                    揚棄傳統製錶對稱框架，開創前衛的多層立體空間結構，使機械細件如雕塑般，於不同角度皆展現非凡張力。
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- 視覺切片/視差系列 (Curated Collection) -->
+    <section class="py-24 bg-chrono-dark/40 border-y border-white/5 relative z-10" id="collection">
+        <div class="container mx-auto px-6 lg:px-16">
+            <div class="flex flex-col md:flex-row md:items-end justify-between mb-20 gap-6">
+                <div>
+                    <span class="text-xs uppercase tracking-[0.4em] text-chrono-sand font-semibold block mb-2">CURATED CLASSICS</span>
+                    <h2 class="text-3xl md:text-5xl font-serif text-chrono-platinum">傳奇經典・限量巨製</h2>
+                </div>
+                <p class="text-stone-400 font-light max-w-md text-sm leading-relaxed">
+                    探尋引力與美學的終極解，我們融會古老手工琺瑯彩繪與未來太科技高精度金屬冶金，鑄成世間絕無僅有之藝術臻品。
+                </p>
+            </div>
+
+            <!-- Awwwards Staggered / Parallax Column 佈局 -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-16">
+                <!-- 藏品 1 -->
+                <div class="collection-card glass-panel p-6 rounded-3xl group flex flex-col justify-between transition-all duration-500 hover:border-chrono-sand/20">
+                    <div class="relative w-full aspect-[4/3] rounded-2xl overflow-hidden mb-6 border border-white/5">
+                        <img src="https://images.unsplash.com/photo-1547949003-9792a18a2601?q=80&w=1200&auto=format&fit=crop" 
+                             alt="CHRONOS Astronomical Engine" 
+                             class="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105">
+                        <div class="absolute inset-0 bg-gradient-to-t from-chrono-black/80 via-transparent to-transparent"></div>
+                        <span class="absolute top-4 right-4 bg-chrono-black/80 backdrop-blur-md text-chrono-sand text-xs px-3 py-1 rounded-full border border-white/10 tracking-widest uppercase">重力大師</span>
+                    </div>
+                    <div>
+                        <h3 class="text-2xl font-serif text-chrono-platinum mb-2 group-hover:text-chrono-sand transition-colors">THE ASTRO-COMPLEX | 恆星複雜功能機械</h3>
+                        <p class="text-stone-400 text-sm font-light">
+                            集結陀飛輪、天文月相與三問響鈴。鈦金屬錶殼與黑化微機械結構，極盡純粹的宇宙秩序。
+                        </p>
+                    </div>
+                    <div class="mt-8 pt-6 border-t border-white/5 flex justify-between items-center">
+                        <div>
+                            <span class="block text-[10px] text-stone-500 uppercase tracking-widest">極致身價</span>
+                            <span class="text-lg font-mono text-chrono-sand">預約私密詢價</span>
+                        </div>
+                        <button onclick="showToast('正在初始化私人貴賓諮詢系統...')" class="magnetic-button px-5 py-2.5 bg-white/5 hover:bg-chrono-platinum text-chrono-platinum hover:text-chrono-black text-xs font-semibold tracking-wider uppercase rounded-xl transition-all duration-300">
+                            預約鑑賞
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 藏品 2 -->
+                <div class="collection-card glass-panel p-6 rounded-3xl group flex flex-col justify-between transition-all duration-500 hover:border-chrono-sand/20 lg:translate-y-12">
+                    <div class="relative w-full aspect-[4/3] rounded-2xl overflow-hidden mb-6 border border-white/5">
+                        <img src="https://images.unsplash.com/photo-1523275335684-37898b6baf30?q=80&w=1200&auto=format&fit=crop" 
+                             alt="CHRONOS Metaphysical Titanium" 
+                             class="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105">
+                        <div class="absolute inset-0 bg-gradient-to-t from-chrono-black/80 via-transparent to-transparent"></div>
+                        <span class="absolute top-4 right-4 bg-chrono-black/80 backdrop-blur-md text-chrono-sand text-xs px-3 py-1 rounded-full border border-white/10 tracking-widest uppercase">微型奇蹟</span>
+                    </div>
+                    <div>
+                        <h3 class="text-2xl font-serif text-chrono-platinum mb-2 group-hover:text-chrono-sand transition-colors">THE NEBULA | 星雲透視鏤空系列</h3>
+                        <p class="text-stone-400 text-sm font-light">
+                            極限鏤空工藝至最高度。114 顆高淨度藍寶石軸承明亮耀眼，微秒動力傳輸盡在眼前清晰起搏。
+                        </p>
+                    </div>
+                    <div class="mt-8 pt-6 border-t border-white/5 flex justify-between items-center">
+                        <div>
+                            <span class="block text-[10px] text-stone-500 uppercase tracking-widest">客製啟售</span>
+                            <span class="text-lg font-mono text-chrono-sand">NT$ 4,800,000 起</span>
+                        </div>
+                        <button onclick="showToast('已開啟時光熔爐星雲系列預載配置。')" class="magnetic-button px-5 py-2.5 bg-white/5 hover:bg-chrono-platinum text-chrono-platinum hover:text-chrono-black text-xs font-semibold tracking-wider uppercase rounded-xl transition-all duration-300">
+                            立即配置
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 時光熔爐客製化計算器 (Interactive Configurator Section) -->
+    <section class="py-32 relative z-10" id="configurator">
+        <div class="container mx-auto px-6 lg:px-16">
+            <div class="text-center max-w-2xl mx-auto mb-20 space-y-4">
+                <span class="text-xs uppercase tracking-[0.4em] text-chrono-sand font-semibold block">TIME FORGE SIMULATION</span>
+                <h2 class="text-3xl md:text-5xl font-serif text-chrono-platinum">時光熔爐・高維度定製</h2>
+                <p class="text-stone-400 font-light">親自挑選您的時間容器。實時計算珍罕稀貴金屬、精密模組與手工鐫刻之資費預算。</p>
+            </div>
+
+            <!-- 計算器主體結構 -->
+            <div class="max-w-5xl mx-auto glass-panel rounded-3xl p-8 lg:p-12 border border-white/5 grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+                
+                <!-- 選擇控制面板 -->
+                <div class="lg:col-span-7 space-y-8">
+                    <!-- 1. 外殼貴金屬選擇 -->
+                    <div class="space-y-3">
+                        <label class="block text-xs uppercase tracking-widest text-stone-400 font-semibold">外殼材質 (Rare Metals)</label>
+                        <div class="grid grid-cols-3 gap-3">
+                            <button onclick="selectMaterial('carbon', 0, '鍛造碳 & 鈦金屬')" id="btn-mat-carbon" class="material-btn px-4 py-3 border border-white/5 rounded-xl text-center transition-all bg-white/5 text-stone-300">
+                                <span class="block text-xs font-bold font-mono">鍛造碳 & 鈦</span>
+                                <span class="text-[9px] text-stone-500">+NT$ 0</span>
+                            </button>
+                            <button onclick="selectMaterial('gold', 850000, '18K 玫瑰金')" id="btn-mat-gold" class="material-btn px-4 py-3 border border-white/5 rounded-xl text-center transition-all text-stone-500">
+                                <span class="block text-xs font-bold font-mono">18K 玫瑰金</span>
+                                <span class="text-[9px] text-stone-500">+85萬</span>
+                            </button>
+                            <button onclick="selectMaterial('platinum', 1500000, '950 鉑金')" id="btn-mat-platinum" class="material-btn px-4 py-3 border border-white/5 rounded-xl text-center transition-all text-stone-500">
+                                <span class="block text-xs font-bold font-mono">950 鉑金</span>
+                                <span class="text-[9px] text-stone-500">+150萬</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 2. 機械複雜功能組件 -->
+                    <div class="space-y-3">
+                        <label class="block text-xs uppercase tracking-widest text-stone-400 font-semibold">機芯模組配備 (Caliber Complications)</label>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <button onclick="toggleComplication('com-tourbillon', 1800000, '雙軸球形陀飛輪')" id="btn-com-tourbillon" class="complication-btn flex justify-between items-center px-4 py-3 border border-white/5 rounded-xl text-left transition-all text-stone-400">
+                                <div>
+                                    <span class="block text-xs font-semibold">雙軸球形陀飛輪</span>
+                                    <span class="text-[9px] text-stone-500">極限重力補償</span>
+                                </div>
+                                <span class="text-xs font-mono text-chrono-sand">+NT$ 1,800,000</span>
+                            </button>
+                            <button onclick="toggleComplication('com-moon', 600000, '天文自適應月相輪')" id="btn-com-moon" class="complication-btn flex justify-between items-center px-4 py-3 border border-white/5 rounded-xl text-left transition-all text-stone-400">
+                                <div>
+                                    <span class="block text-xs font-semibold">天文自適應月相輪</span>
+                                    <span class="text-[9px] text-stone-500">122 年精密零誤差</span>
+                                </div>
+                                <span class="text-xs font-mono text-chrono-sand">+NT$ 600,000</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 3. 大師手工浮雕客製 -->
+                    <div class="space-y-3">
+                        <div class="flex justify-between">
+                            <label class="text-xs uppercase tracking-widest text-stone-400 font-semibold">手工機芯背雕雕刻工時</label>
+                            <span id="engraving-hours" class="text-xs font-mono text-chrono-sand">40 小時</span>
+                        </div>
+                        <input id="slider-engraving" type="range" min="0" max="200" value="40" step="10" oninput="updateEngraving()" class="w-full accent-chrono-sand h-1 bg-white/10 rounded-lg appearance-none cursor-pointer">
+                        <div class="flex justify-between text-[9px] font-mono text-stone-500">
+                            <span>無背雕</span>
+                            <span>高精細背雕 (200 小時)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 結算展示與認購行為 -->
+                <div class="lg:col-span-5 p-6 rounded-2xl bg-stone-900/40 border border-white/5 text-center space-y-6">
+                    <div>
+                        <span class="text-xs uppercase text-stone-500 tracking-widest">當前預算結構</span>
+                        <div class="mt-4 space-y-2 text-xs text-stone-400 text-left">
+                            <div class="flex justify-between">
+                                <span>基礎型機芯結構</span>
+                                <span class="font-mono text-chrono-platinum">NT$ 3,000,000</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span>外殼材質：<span id="label-material" class="text-chrono-sand font-medium">鍛造碳 & 鈦金屬</span></span>
+                                <span id="val-material" class="font-mono text-chrono-platinum">NT$ 0</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span>組件追加</span>
+                                <span id="val-complication" class="font-mono text-chrono-platinum">NT$ 0</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span>背雕工時：<span id="label-engraving" class="text-chrono-sand font-medium">40 小時</span></span>
+                                <span id="val-engraving" class="font-mono text-chrono-platinum">NT$ 120,000</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="pt-6 border-t border-white/5">
+                        <span class="text-[10px] uppercase text-stone-400 tracking-wider block mb-1">估計總體合約預算</span>
+                        <div class="flex items-baseline justify-center gap-1">
+                            <span class="text-xs text-stone-500">NT$</span>
+                            <span id="total-price" class="text-3xl md:text-4xl font-mono font-bold text-chrono-sand">3,120,000</span>
+                        </div>
+                    </div>
+
+                    <button onclick="handlePreorder()" class="magnetic-button w-full py-4 rounded-xl bg-chrono-sand hover:bg-chrono-platinum text-chrono-black font-semibold text-xs tracking-[0.2em] uppercase transition-all duration-300 shadow-xl shadow-chrono-sand/10">
+                        建立您的時間鑄造專案
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 極細微機械機制手風琴 (Specifications Accordion Section) -->
+    <section class="py-24 relative z-10" id="specifications">
+        <div class="container mx-auto px-6 lg:px-16 max-w-4xl">
+            <div class="text-center mb-16 space-y-4">
+                <span class="text-xs uppercase tracking-[0.4em] text-chrono-sand font-semibold block">TECHNICAL MASTERCLASS</span>
+                <h2 class="text-3xl md:text-5xl font-serif text-chrono-platinum">時間極限細節與防護</h2>
+                <p class="text-stone-400 font-light">揭開極精密機械在引力波干擾與極端溫度下的完美表現。</p>
+            </div>
+
+            <!-- 手風琴列表 -->
+            <div class="space-y-4">
+                <!-- 項目 1 -->
+                <div class="glass-panel rounded-2xl overflow-hidden border border-white/5 transition-colors">
+                    <button onclick="toggleAccordion(1)" class="w-full px-6 py-5 text-left flex justify-between items-center text-chrono-platinum font-semibold text-sm md:text-base">
+                        <span>關於隕鐵錶盤的有機氧化防護</span>
+                        <iconify-icon id="accordion-icon-1" icon="solar:alt-arrow-down-linear" class="text-stone-400 text-lg transition-transform duration-300"></iconify-icon>
+                    </button>
+                    <div id="accordion-ans-1" class="max-h-0 overflow-hidden transition-all duration-300 ease-in-out bg-white/5">
+                        <div class="p-6 text-stone-400 font-light text-sm leading-relaxed">
+                            我們採用距今百萬年前墜落地球的珍貴瑞典 Muonionalusta 隕鐵，其具備獨特壯麗的魏德曼花紋。每塊隕件皆於極度真空環境下進行特殊極化奈米級防腐蝕處理，保證微細紋路與原生態光澤經年不變。
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 項目 2 -->
+                <div class="glass-panel rounded-2xl overflow-hidden border border-white/5 transition-colors">
+                    <button onclick="toggleAccordion(2)" class="w-full px-6 py-5 text-left flex justify-between items-center text-chrono-platinum font-semibold text-sm md:text-base">
+                        <span>雙軸與單軸陀飛輪對防禦引力的實證效益</span>
+                        <iconify-icon id="accordion-icon-2" icon="solar:alt-arrow-down-linear" class="text-stone-400 text-lg transition-transform duration-300"></iconify-icon>
+                    </button>
+                    <div id="accordion-ans-2" class="max-h-0 overflow-hidden transition-all duration-300 ease-in-out bg-white/5">
+                        <div class="p-6 text-stone-400 font-light text-sm leading-relaxed">
+                            傳統陀飛輪僅能補償垂直方向的地心引力。CHRONOS 雙軸球形陀飛輪可使擺輪在三維空間中不間斷進行 360 度多角度交替運轉，藉此將物理方向引力所造成的等時性偏差降至近乎於零的絕對界限。
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 項目 3 -->
+                <div class="glass-panel rounded-2xl overflow-hidden border border-white/5 transition-colors">
+                    <button onclick="toggleAccordion(3)" class="w-full px-6 py-5 text-left flex justify-between items-center text-chrono-platinum font-semibold text-sm md:text-base">
+                        <span>如何預約專屬頂級時間鑄造鑑賞？</span>
+                        <iconify-icon id="accordion-icon-3" icon="solar:alt-arrow-down-linear" class="text-stone-400 text-lg transition-transform duration-300"></iconify-icon>
+                    </button>
+                    <div id="accordion-ans-3" class="max-h-0 overflow-hidden transition-all duration-300 ease-in-out bg-white/5">
+                        <div class="p-6 text-stone-400 font-light text-sm leading-relaxed">
+                            請點選熔爐面板中的「建立您的時間鑄造專案」或是與我們的首席工藝大使連線。我們會在確認您的基本資料後，派遣專屬尊榮管家與您取得聯繫，並在全球各大旗艦藝廊中為您開闢一場一對一的私密鑑賞專場。
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 頂奢合作夥伴標章 -->
+    <section class="py-16 bg-stone-900/20 border-y border-white/5 relative z-10">
+        <div class="container mx-auto px-6 lg:px-16 text-center">
+            <span class="text-[10px] tracking-[0.4em] text-stone-500 uppercase font-semibold block mb-8">頂級尊尚全球原物料與工藝合作聯盟</span>
+            <div class="flex flex-wrap justify-center items-center gap-12 lg:gap-24 opacity-30 grayscale contrast-150">
+                <div class="flex items-center gap-2 text-chrono-platinum text-xs font-semibold tracking-widest">
+                    <iconify-icon icon="simple-icons:ferrari" class="text-xl"></iconify-icon> MARANELLO STEEL
+                </div>
+                <div class="flex items-center gap-2 text-chrono-platinum text-xs font-semibold tracking-widest">
+                    <iconify-icon icon="simple-icons:rolex" class="text-2xl"></iconify-icon> SWISS HOROLOGY
+                </div>
+                <div class="flex items-center gap-2 text-chrono-platinum text-xs font-semibold tracking-widest">
+                    <iconify-icon icon="simple-icons:rollsroyce" class="text-2xl"></iconify-icon> GENTLEMANS METALS
+                </div>
+                <div class="flex items-center gap-2 text-chrono-platinum text-xs font-semibold tracking-widest">
+                    <iconify-icon icon="simple-icons:michelin" class="text-xl"></iconify-icon> CHRONIC TRAFFIC
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 高雅製錶工坊預約表單 -->
+    <section class="py-32 relative z-10 container mx-auto px-6 lg:px-16 max-w-4xl" id="reservation">
+        <div class="glass-panel rounded-3xl p-8 lg:p-12 border border-white/5 relative overflow-hidden">
+            <div class="absolute top-0 right-0 w-64 h-64 bg-chrono-sand/5 rounded-full blur-3xl pointer-events-none"></div>
+            
+            <div class="text-center max-w-2xl mx-auto mb-10 space-y-4">
+                <h2 class="text-2xl md:text-4xl font-serif font-light text-chrono-platinum">與首席製錶大師開啟時光對話</h2>
+                <p class="text-stone-400 font-light text-sm">留下您的基本聯繫資訊。CHRONOS 首席工藝特使將於 24 小時內與您私密聯繫，籌備預約看錶事宜。</p>
+            </div>
+
+            <form id="preorder-form" onsubmit="handleFormSubmit(event)" class="space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-[10px] font-semibold text-stone-400 uppercase tracking-widest mb-2">貴賓尊稱</label>
+                        <input type="text" id="form-name" required placeholder="例如：顧總裁" class="w-full bg-white/5 border border-white/10 focus:border-chrono-sand focus:ring-1 focus:ring-chrono-sand rounded-xl px-4 py-3 text-chrono-platinum text-sm outline-none transition-all">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-semibold text-stone-400 uppercase tracking-widest mb-2">聯繫電子郵件</label>
+                        <input type="email" id="form-email" required placeholder="vip@chronos.club" class="w-full bg-white/5 border border-white/10 focus:border-chrono-sand focus:ring-1 focus:ring-chrono-sand rounded-xl px-4 py-3 text-chrono-platinum text-sm outline-none transition-all">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-semibold text-stone-400 uppercase tracking-widest mb-2">預期定制系列類別</label>
+                    <select id="form-series" class="w-full bg-stone-900 border border-white/10 focus:border-chrono-sand focus:ring-1 focus:ring-chrono-sand rounded-xl px-4 py-3 text-stone-300 text-sm outline-none transition-all">
+                        <option value="astro">The Astro-Complex 恆星系列</option>
+                        <option value="nebula">The Nebula 星雲系列</option>
+                        <option value="custom">由零開始大師定制 (Bespoke Calibration)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-semibold text-stone-400 uppercase tracking-widest mb-2">備註您的特殊典藏想法 (選填)</label>
+                    <textarea id="form-note" rows="3" placeholder="例如：希冀客製化 12 世紀拜占庭星座星曆盤圖飾..." class="w-full bg-white/5 border border-white/10 focus:border-chrono-sand focus:ring-1 focus:ring-chrono-sand rounded-xl px-4 py-3 text-chrono-platinum text-sm outline-none transition-all resize-none"></textarea>
+                </div>
+
+                <div class="flex justify-center pt-4">
+                    <button type="submit" class="magnetic-button px-10 py-4 bg-chrono-platinum hover:bg-chrono-sand text-chrono-black font-semibold text-xs tracking-widest uppercase rounded-xl transition-all duration-300 shadow-xl">
+                        送出私密鑑賞申請
+                    </button>
+                </div>
+            </form>
+        </div>
+    </section>
+
+    <!-- 頁尾 -->
+    <footer class="bg-chrono-black py-16 relative z-10 border-t border-white/5">
+        <div class="container mx-auto px-6 lg:px-16 grid grid-cols-1 md:grid-cols-4 gap-12">
+            <div class="space-y-4 md:col-span-2">
+                <span class="text-xl font-serif tracking-[0.25em] font-semibold text-chrono-platinum">CHRONOS & CO.</span>
+                <p class="text-stone-500 text-xs font-light max-w-sm leading-relaxed">
+                    時間的極致演繹者。我們用頂級幾何美學、非凡機械組裝、極致客製體驗，為您守護這場微觀維度下的宇宙律動。
+                </p>
+            </div>
+            <div>
+                <h4 class="text-stone-300 text-xs font-semibold tracking-widest uppercase mb-4">典藏通道</h4>
+                <ul class="space-y-2 text-stone-500 text-xs font-light">
+                    <li><a href="#philosophy" class="hover:text-chrono-sand transition-colors">時空哲學</a></li>
+                    <li><a href="#collection" class="hover:text-chrono-sand transition-colors">經典定番</a></li>
+                    <li><a href="#configurator" class="hover:text-chrono-sand transition-colors">時光熔爐</a></li>
+                </ul>
+            </div>
+            <div>
+                <h4 class="text-stone-300 text-xs font-semibold tracking-widest uppercase mb-4">隱密沙龍</h4>
+                <ul class="space-y-2 text-stone-500 text-xs font-light">
+                    <li>瑞士日內瓦製錶沙龍</li>
+                    <li>vip@chronosandco.io</li>
+                    <li>02-2777-XXXX</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="container mx-auto px-6 lg:px-16 mt-16 pt-8 border-t border-white/5 flex flex-col sm:flex-row justify-between items-center text-xs text-stone-600 gap-4">
+            <div class="flex items-center gap-2">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span>Switzerland Atelier: Active Syncing</span>
+            </div>
+            <p>&copy; 2026 CHRONOS & CO. Atelier. All Rights Reserved.</p>
+            <div class="flex gap-6">
+                <a href="#" class="hover:text-stone-400"><iconify-icon icon="ri:twitter-x-fill" class="text-lg"></iconify-icon></a>
+                <a href="#" class="hover:text-stone-400"><iconify-icon icon="ri:instagram-line" class="text-lg"></iconify-icon></a>
+                <a href="#" class="hover:text-stone-400"><iconify-icon icon="ri:pinterest-line" class="text-lg"></iconify-icon></a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Toast 提示組件 -->
+    <div id="toast-container" class="fixed bottom-8 right-8 z-50 pointer-events-none flex flex-col gap-3"></div>
+
+    <!-- 腳本邏輯區 -->
+    <script>
+        // 1. 高級滑鼠游標追蹤
+        const cursor = document.getElementById('cursor');
+        const follower = document.getElementById('cursor-follower');
+        
+        document.addEventListener('mousemove', (e) => {
+            gsap.to(cursor, { x: e.clientX, y: e.clientY, duration: 0.05 });
+            gsap.to(follower, { x: e.clientX, y: e.clientY, duration: 0.15 });
+        });
+
+        // 磁吸按鈕與游標放大交互效果
+        document.querySelectorAll('.magnetic-button, a, button, input, select, textarea').forEach(el => {
+            el.addEventListener('mouseenter', () => {
+                follower.style.transform = 'translate(-50%, -50%) scale(1.6)';
+                follower.style.borderColor = 'rgba(197, 168, 128, 0.8)';
+            });
+            el.addEventListener('mouseleave', () => {
+                follower.style.transform = 'translate(-50%, -50%) scale(1)';
+                follower.style.borderColor = 'rgba(197, 168, 128, 0.4)';
+            });
+            
+            // 磁吸效果
+            if (el.classList.contains('magnetic-button')) {
+                el.addEventListener('mousemove', (e) => {
+                    const rect = el.getBoundingClientRect();
+                    const x = e.clientX - rect.left - rect.width / 2;
+                    const y = e.clientY - rect.top - rect.height / 2;
+                    gsap.to(el, { x: x * 0.3, y: y * 0.3, duration: 0.3, ease: 'power2.out' });
+                });
+                el.addEventListener('mouseleave', () => {
+                    gsap.to(el, { x: 0, y: 0, duration: 0.5, ease: 'elastic.out(1, 0.3)' });
+                });
+            }
+        });
+
+        // 2. Three.js 3D 星際機械星軌（陀飛輪）核心
+        let scene, camera, renderer, clockGroup;
+        const container = document.getElementById('canvas-container');
+
+        function initThree() {
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+            camera.position.z = 12;
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            container.appendChild(renderer.domElement);
+
+            // 建立機械群組
+            clockGroup = new THREE.Group();
+            scene.add(clockGroup);
+
+            // 燈光
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.1);
+            scene.add(ambientLight);
+
+            const dirLight1 = new THREE.DirectionalLight(0xfff5e6, 1.5);
+            dirLight1.position.set(5, 5, 5);
+            scene.add(dirLight1);
+
+            const dirLight2 = new THREE.DirectionalLight(0x8099ff, 1.0);
+            dirLight2.position.set(-5, -5, -2);
+            scene.add(dirLight2);
+
+            // 機械圓環 1 - 外軌道
+            const outGeo = new THREE.RingGeometry(3.6, 3.65, 64);
+            const goldMat = new THREE.MeshStandardMaterial({ color: 0xD4AF37, roughness: 0.2, metalness: 0.9, side: THREE.DoubleSide });
+            const outRing = new THREE.Mesh(outGeo, goldMat);
+            clockGroup.add(outRing);
+
+            // 機械圓環 2 - 中軌道（星軌）
+            const midGeo = new THREE.RingGeometry(2.8, 2.84, 64);
+            const platMat = new THREE.MeshStandardMaterial({ color: 0x8E8E8A, roughness: 0.3, metalness: 0.9, side: THREE.DoubleSide });
+            const midRing = new THREE.Mesh(midGeo, platMat);
+            midRing.rotation.x = Math.PI / 4;
+            clockGroup.add(midRing);
+
+            // 陀飛輪旋轉框架（微細輪幅）
+            const gearGeo = new THREE.TorusGeometry(1.8, 0.05, 16, 100);
+            const gearMat = new THREE.MeshStandardMaterial({ color: 0xD4AF37, roughness: 0.1, metalness: 1.0 });
+            const mainGear = new THREE.Mesh(gearGeo, gearMat);
+            clockGroup.add(mainGear);
+
+            // 建立輪幅
+            for(let i=0; i<6; i++) {
+                const spokeGeo = new THREE.CylinderGeometry(0.02, 0.02, 3.6, 8);
+                const spoke = new THREE.Mesh(spokeGeo, gearMat);
+                spoke.rotation.z = (Math.PI / 6) * i;
+                mainGear.add(spoke);
+            }
+
+            // 星塵粒子雲 (Stardust particles)
+            const particleCount = 400;
+            const particleGeo = new THREE.BufferGeometry();
+            const positions = new Float32Array(particleCount * 3);
+
+            for (let i = 0; i < particleCount * 3; i += 3) {
+                // 於球狀雲集內隨機分佈
+                const radius = 3 + Math.random() * 4;
+                const theta = Math.random() * Math.PI * 2;
+                const phi = Math.acos(2 * Math.random() - 1);
+
+                positions[i] = radius * Math.sin(phi) * Math.cos(theta);
+                positions[i + 1] = radius * Math.sin(phi) * Math.sin(theta);
+                positions[i + 2] = radius * Math.cos(phi);
+            }
+
+            particleGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            const particleMat = new THREE.PointsMaterial({
+                color: 0xC5A880,
+                size: 0.04,
+                transparent: true,
+                opacity: 0.6
+            });
+            const stardust = new THREE.Points(particleGeo, particleMat);
+            clockGroup.add(stardust);
+
+            animateThree();
+        }
+
+        function animateThree() {
+            requestAnimationFrame(animateThree);
+
+            // 機械組件旋轉運動
+            clockGroup.children[0].rotation.z += 0.002; // 外環緩慢自轉
+            clockGroup.children[1].rotation.y -= 0.005; // 中環星軌橫向轉動
+            clockGroup.children[2].rotation.z += 0.012; // 核心齒輪高速轉動 (模擬擺輪高頻運轉)
+
+            // 粒子整體微自轉
+            if (clockGroup.children[3]) {
+                clockGroup.children[3].rotation.y += 0.001;
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        // 隨視窗大小自適應縮放
+        window.addEventListener('resize', () => {
+            if (camera && renderer) {
+                camera.aspect = container.clientWidth / container.clientHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(container.clientWidth, container.clientHeight);
+            }
+        });
+
+        // 游標位置微傾斜機械群組 (動態三維視差)
+        document.addEventListener('mousemove', (e) => {
+            if (clockGroup) {
+                const x = (e.clientX / window.innerWidth) - 0.5;
+                const y = (e.clientY / window.innerHeight) - 0.5;
+                gsap.to(clockGroup.rotation, {
+                    x: y * 0.4,
+                    y: x * 0.4,
+                    duration: 0.8,
+                    ease: 'power1.out'
+                });
+            }
+        });
+
+        // 3. 時光熔爐 Configurator 交互及計算邏輯
+        let configBase = 3000000;
+        let configMaterialPrice = 0;
+        let configComplicationsPrice = 0;
+        let configEngravingPrice = 120000;
+        const activeComplications = new Set();
+
+        function selectMaterial(type, price, name) {
+            // 切換按鈕樣式
+            document.querySelectorAll('.material-btn').forEach(btn => {
+                btn.classList.remove('bg-white/5', 'text-stone-300');
+                btn.classList.add('text-stone-500');
+            });
+            const activeBtn = document.getElementById(`btn-mat-${type}`);
+            activeBtn.classList.add('bg-white/5', 'text-stone-300');
+            activeBtn.classList.remove('text-stone-500');
+
+            // 變更數值與文字
+            configMaterialPrice = price;
+            document.getElementById('label-material').innerText = name;
+            document.getElementById('val-material').innerText = price === 0 ? 'NT$ 0' : `NT$ ${price.toLocaleString()}`;
+            
+            calculateTotal();
+            showToast(`已配置外殼材質為：${name}`);
+        }
+
+        function toggleComplication(id, price, name) {
+            const btn = document.getElementById(`btn-${id}`);
+            if (activeComplications.has(id)) {
+                activeComplications.delete(id);
+                btn.classList.remove('bg-chrono-sand/10', 'border-chrono-sand', 'text-chrono-sand');
+                btn.classList.add('text-stone-400');
+                configComplicationsPrice -= price;
+                showToast(`移除精密組件：${name}`);
+            } else {
+                activeComplications.add(id);
+                btn.classList.add('bg-chrono-sand/10', 'border-chrono-sand', 'text-chrono-sand');
+                btn.classList.remove('text-stone-400');
+                configComplicationsPrice += price;
+                showToast(`追加精密組件：${name}`);
+            }
+
+            document.getElementById('val-complication').innerText = configComplicationsPrice === 0 ? 'NT$ 0' : `NT$ ${configComplicationsPrice.toLocaleString()}`;
+            calculateTotal();
+        }
+
+        function updateEngraving() {
+            const hours = document.getElementById('slider-engraving').value;
+            configEngravingPrice = hours * 3000; // 每工時 NT$3,000
+
+            document.getElementById('engraving-hours').innerText = `${hours} 小時`;
+            document.getElementById('label-engraving').innerText = hours === "0" ? '無背雕' : `${hours} 小時`;
+            document.getElementById('val-engraving').innerText = configEngravingPrice === 0 ? 'NT$ 0' : `NT$ ${configEngravingPrice.toLocaleString()}`;
+            calculateTotal();
+        }
+
+        function calculateTotal() {
+            const total = configBase + configMaterialPrice + configComplicationsPrice + configEngravingPrice;
+            
+            // GSAP 滾動數字緩動 (高階感)
+            const currentObj = { val: parseInt(document.getElementById('total-price').innerText.replace(/,/g, '')) };
+            gsap.to(currentObj, {
+                val: total,
+                duration: 0.6,
+                ease: 'power2.out',
+                onUpdate: () => {
+                    document.getElementById('total-price').innerText = Math.round(currentObj.val).toLocaleString();
+                }
+            });
+        }
+
+        function handlePreorder() {
+            showToast('正在為您準備時間鑄造合約草案...');
+            setTimeout(() => {
+                document.getElementById('reservation').scrollIntoView({ behavior: 'smooth' });
+                showToast('請於下方留下您的聯繫名錄，以便奉上專案細節。');
+            }, 800);
+        }
+
+        // 4. 手風琴常見機制問答 (Accordion)
+        function toggleAccordion(index) {
+            const ans = document.getElementById(`accordion-ans-${index}`);
+            const icon = document.getElementById(`accordion-icon-${index}`);
+
+            if (ans.style.maxHeight === '0px' || !ans.style.maxHeight) {
+                ans.style.maxHeight = '200px';
+                icon.style.transform = 'rotate(180deg)';
+                icon.style.color = '#C5A880';
+            } else {
+                ans.style.maxHeight = '0px';
+                icon.style.transform = 'rotate(0deg)';
+                icon.style.color = '#a8a29e';
+            }
+        }
+
+        // 5. 高級貴賓表單送出
+        function handleFormSubmit(event) {
+            event.preventDefault();
+            const name = document.getElementById('form-name').value;
+            showToast(`合約送出成功。尊貴的 ${name} 閣下，專屬工藝大使將在 24 小時內與您專線對接。`);
+            document.getElementById('preorder-form').reset();
+        }
+
+        // 6. 電影級全域 Toast 提示
+        function showToast(message) {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = 'glass-panel border-l-4 border-chrono-sand p-4 rounded-xl text-xs font-medium text-chrono-platinum shadow-2xl pointer-events-auto transition-all duration-300 opacity-0 translate-y-4 max-w-sm flex items-center gap-3';
+            toast.innerHTML = `
+                <iconify-icon icon="solar:info-circle-linear" class="text-chrono-sand text-lg"></iconify-icon>
+                <span>${message}</span>
+            `;
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.classList.remove('opacity-0', 'translate-y-4');
+                toast.classList.add('opacity-100', 'translate-y-0');
+            }, 50);
+
+            setTimeout(() => {
+                toast.classList.remove('opacity-100', 'translate-y-0');
+                toast.classList.add('opacity-0', 'translate-y-[-10px]');
+                setTimeout(() => { toast.remove(); }, 300);
+            }, 4000);
+        }
+
+        // 7. 初始化與 GSAP 捲軸視差觸發
+        window.onload = function() {
+            initThree();
+
+            // 載入 ScrollTrigger
+            gsap.registerPlugin(ScrollTrigger);
+
+            // 藏品卡片 staggered Parallax 進場與上浮
+            gsap.utils.toArray('.collection-card, #philosophy .glass-panel, #configurator, #specifications').forEach(element => {
+                gsap.from(element, {
+                    scrollTrigger: {
+                        trigger: element,
+                        start: 'top 85%',
+                        toggleActions: 'play none none none'
+                    },
+                    opacity: 0,
+                    y: 60,
+                    duration: 1.2,
+                    ease: 'power3.out'
+                });
+            });
+        }
+    </script>
+</body>
+</html>
